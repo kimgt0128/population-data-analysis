@@ -36,6 +36,7 @@ cells = [
         - 보조 분석 대상: `인구증감률/자연증가율` 자료가 있을 경우 추가 확인
         - 분석 방식 A: 강의자료 방식에 가까운 complete-case 분석
         - 분석 방식 B: 평균 대체와 선형 보간을 적용한 민감도 분석
+        - 확장 분석: 혼인, 사교육비, 주택가격, 경력단절, 청년순이동 자료가 추가되면 별도 민감도 분석
 
         원본 KOSIS 엑셀 파일은 수정하지 않고, `data/` 폴더에서 읽기만 합니다.
         """
@@ -654,6 +655,274 @@ cells = [
     ),
     md(
         """
+        ## 03-1 추가 요인 확장 데이터 준비
+
+        교수님 답변에 따라 안내문 외 요인도 고려할 수 있으므로, 조사 로그에서 권장한 추가 요인을 확장 분석 후보로 둡니다.
+        단, 기존 9개 요인과 개인소득 분석을 메인 결과로 유지하고, 아래 요인은 자료가 `data/` 폴더에 추가된 경우에만 별도 민감도 분석으로 사용합니다.
+        """
+    ),
+    code(
+        """
+        optional_factor_candidates = pd.DataFrame(
+            [
+                {
+                    "추가요인": "혼인/초혼연령",
+                    "대표지표": "조혼인율, 혼인건수, 평균 초혼연령",
+                    "선택이유": "한국은 출생 대부분이 혼인 안에서 발생하므로 출산율 변동의 직접 경로를 확인할 수 있음",
+                    "KOSIS검색어": "인구동향조사, 조혼인율, 혼인건수, 평균 초혼연령",
+                    "주의점": "합계출산율과 가까운 중간 메커니즘이므로 원인 변수처럼 단정하지 않음",
+                },
+                {
+                    "추가요인": "사교육비",
+                    "대표지표": "지역별 학생 1인당 월평균 사교육비",
+                    "선택이유": "자녀 양육비 기대 부담을 가장 직관적으로 보여주는 지표",
+                    "KOSIS검색어": "초중고사교육비조사, 지역별 학생 1인당 월평균 사교육비",
+                    "주의점": "출산 결정 시점과 시차가 있으므로 미래 양육비 부담의 대리변수로 해석",
+                },
+                {
+                    "추가요인": "주거비 부담",
+                    "대표지표": "주택 매매가격지수, 전세가격지수, 월세가격지수",
+                    "선택이유": "주거안정률로 포착되지 않는 가격 압박을 보강",
+                    "KOSIS검색어": "주택가격동향조사, 주택 매매가격지수, 주택 전세가격지수",
+                    "주의점": "가격지수는 지역 간 절대 수준보다 시간 변화 중심으로 해석",
+                },
+                {
+                    "추가요인": "일-가정 양립",
+                    "대표지표": "경력단절여성인구, 여성 고용률, 육아휴직 지표",
+                    "선택이유": "맞벌이 여부만으로는 출산 이후 경력 비용을 설명하기 어려움",
+                    "KOSIS검색어": "경력단절여성인구, 지역별고용조사, 육아휴직급여 수급자",
+                    "주의점": "규모 변수는 여성 인구 대비 비율화가 필요할 수 있음",
+                },
+                {
+                    "추가요인": "청년 이동",
+                    "대표지표": "청년순이동률, 청년 순이동자수",
+                    "선택이유": "지역별 청년 유출입과 수도권 집중을 출산율/인구증감률 해석에 반영",
+                    "KOSIS검색어": "국내인구이동통계, 청년순이동률, 시도/성/연령별 순이동자수",
+                    "주의점": "합계출산율 분석에서는 이동과 출산의 방향성이 섞일 수 있음",
+                },
+            ]
+        )
+
+        display(optional_factor_candidates)
+        """
+    ),
+    code(
+        """
+        OPTIONAL_FACTOR_SPECS = [
+            {
+                "변수": "조혼인율",
+                "파일키워드그룹": [["조혼인율"], ["혼인건수", "조혼인율"], ["인구동향", "혼인"]],
+                "시도컬럼키워드": ["행정구역별", "시도별", "지역별", "시도"],
+                "항목컬럼키워드": ["항목", "지표", "혼인"],
+                "항목값": ["조혼인율"],
+                "멀티헤더항목키워드": ["조혼인율"],
+                "집계": "first",
+            },
+            {
+                "변수": "평균초혼연령",
+                "파일키워드그룹": [["초혼연령"], ["평균", "초혼연령"]],
+                "시도컬럼키워드": ["행정구역별", "시도별", "지역별", "시도"],
+                "항목컬럼키워드": ["항목", "성별", "지표"],
+                "항목값": ["초혼연령", "여", "여자"],
+                "멀티헤더항목키워드": ["초혼연령", "여"],
+                "집계": "mean",
+            },
+            {
+                "변수": "사교육비",
+                "파일키워드그룹": [["사교육비"], ["초중고사교육비"]],
+                "시도컬럼키워드": ["지역별", "시도별", "행정구역별", "지역"],
+                "항목컬럼키워드": ["항목", "특성별", "구분"],
+                "항목값": ["학생 1인당", "월평균", "사교육비", "전체"],
+                "멀티헤더항목키워드": ["학생 1인당", "월평균", "사교육비"],
+                "집계": "first",
+            },
+            {
+                "변수": "주택매매가격지수",
+                "파일키워드그룹": [["주택", "매매가격지수"], ["아파트", "매매가격지수"], ["주택가격동향", "매매"]],
+                "시도컬럼키워드": ["지역별", "시도별", "행정구역별", "지역"],
+                "항목컬럼키워드": ["항목", "지표", "주택유형별"],
+                "항목값": ["주택 매매가격지수", "매매가격지수"],
+                "멀티헤더항목키워드": ["매매가격지수"],
+                "집계": "first",
+            },
+            {
+                "변수": "주택전세가격지수",
+                "파일키워드그룹": [["주택", "전세가격지수"], ["아파트", "전세가격지수"], ["주택가격동향", "전세"]],
+                "시도컬럼키워드": ["지역별", "시도별", "행정구역별", "지역"],
+                "항목컬럼키워드": ["항목", "지표", "주택유형별"],
+                "항목값": ["주택 전세가격지수", "전세가격지수"],
+                "멀티헤더항목키워드": ["전세가격지수"],
+                "집계": "first",
+            },
+            {
+                "변수": "경력단절여성인구",
+                "파일키워드그룹": [["경력단절여성"], ["경력단절", "여성"]],
+                "시도컬럼키워드": ["지역별", "시도별", "행정구역별", "시도"],
+                "항목컬럼키워드": ["항목", "지표", "구분"],
+                "항목값": ["경력단절여성인구", "경력단절여성"],
+                "멀티헤더항목키워드": ["경력단절여성"],
+                "집계": "first",
+            },
+            {
+                "변수": "청년순이동률",
+                "파일키워드그룹": [["청년순이동률"], ["청년", "순이동"], ["순이동", "청년"]],
+                "시도컬럼키워드": ["지역별", "시도별", "행정구역별", "시도"],
+                "항목컬럼키워드": ["항목", "지표", "구분"],
+                "항목값": ["청년순이동률", "청년 순이동률", "순이동률"],
+                "멀티헤더항목키워드": ["청년순이동률", "순이동률"],
+                "집계": "first",
+            },
+        ]
+
+
+        def find_optional_factor_files(keyword_groups):
+            matches = []
+            for keywords in keyword_groups:
+                for path in find_files_by_keywords(*keywords):
+                    if path not in matches:
+                        matches.append(path)
+            return sorted(matches)
+
+
+        def try_extract_optional_factor(path, spec):
+            errors = []
+            variable = spec["변수"]
+
+            attempts = [
+                ("multi", lambda: extract_multi_indicator(
+                    path,
+                    region_keywords=spec["시도컬럼키워드"],
+                    item_keywords=spec["멀티헤더항목키워드"],
+                    value_name=variable,
+                    agg=spec["집계"],
+                )),
+                ("simple_filtered", lambda: extract_simple_indicator(
+                    path,
+                    region_keywords=spec["시도컬럼키워드"],
+                    item_keywords=spec["항목컬럼키워드"],
+                    item_values=spec["항목값"],
+                    value_name=variable,
+                    agg=spec["집계"],
+                )),
+                ("simple_unfiltered", lambda: extract_simple_indicator(
+                    path,
+                    region_keywords=spec["시도컬럼키워드"],
+                    item_keywords=None,
+                    item_values=None,
+                    value_name=variable,
+                    agg=spec["집계"],
+                )),
+            ]
+
+            for method_name, extractor in attempts:
+                try:
+                    extracted = extractor()
+                    extracted = extracted.dropna(subset=[variable])
+                    if extracted.empty:
+                        raise ValueError("추출 후 유효 관측치가 없습니다.")
+                    extracted["추출방법"] = method_name
+                    return extracted[["지역", "연도", variable, "추출방법"]], ""
+                except Exception as exc:
+                    errors.append(f"{method_name}: {type(exc).__name__}({exc})")
+
+            return None, " | ".join(errors)
+
+
+        optional_frames = []
+        optional_status_rows = []
+
+        for spec in OPTIONAL_FACTOR_SPECS:
+            variable = spec["변수"]
+            candidate_files = find_optional_factor_files(spec["파일키워드그룹"])
+
+            if not candidate_files:
+                optional_status_rows.append(
+                    {
+                        "변수": variable,
+                        "상태": "파일없음",
+                        "파일": "",
+                        "관측치수": 0,
+                        "최소연도": np.nan,
+                        "최신연도": np.nan,
+                        "메모": "KOSIS에서 파일을 내려받아 data/에 추가하면 자동 추출을 시도합니다.",
+                    }
+                )
+                continue
+
+            extracted_any = False
+            for path in candidate_files:
+                extracted, error_message = try_extract_optional_factor(path, spec)
+                if extracted is None:
+                    optional_status_rows.append(
+                        {
+                            "변수": variable,
+                            "상태": "추출실패",
+                            "파일": nfc(path.name),
+                            "관측치수": 0,
+                            "최소연도": np.nan,
+                            "최신연도": np.nan,
+                            "메모": error_message[:300],
+                        }
+                    )
+                    continue
+
+                extracted_any = True
+                method = extracted["추출방법"].iloc[0]
+                extracted = extracted.drop(columns=["추출방법"])
+                optional_frames.append(extracted)
+                optional_status_rows.append(
+                    {
+                        "변수": variable,
+                        "상태": "추출성공",
+                        "파일": nfc(path.name),
+                        "관측치수": int(extracted.shape[0]),
+                        "최소연도": int(extracted["연도"].min()),
+                        "최신연도": int(extracted["연도"].max()),
+                        "메모": f"추출방법={method}",
+                    }
+                )
+                break
+
+            if not extracted_any:
+                optional_status_rows.append(
+                    {
+                        "변수": variable,
+                        "상태": "후보파일있음_추출실패",
+                        "파일": ", ".join(nfc(path.name) for path in candidate_files[:3]),
+                        "관측치수": 0,
+                        "최소연도": np.nan,
+                        "최신연도": np.nan,
+                        "메모": "파일 구조를 확인해 수동 추출 규칙을 추가해야 합니다.",
+                    }
+                )
+
+        optional_status_df = pd.DataFrame(optional_status_rows)
+        display(optional_status_df)
+
+        if optional_frames:
+            optional_panel = reduce(
+                lambda left, right: pd.merge(left, right, on=["지역", "연도"], how="outer"),
+                optional_frames,
+            )
+            optional_panel = optional_panel.groupby(["지역", "연도"], as_index=False).mean(numeric_only=True)
+        else:
+            optional_panel = pd.DataFrame(columns=["지역", "연도"])
+
+        AVAILABLE_OPTIONAL_VARS = [
+            col for col in optional_panel.columns
+            if col not in ["지역", "연도"] and optional_panel[col].notna().sum() > 0
+        ]
+
+        print("확장 분석에 사용 가능한 추가 변수:", AVAILABLE_OPTIONAL_VARS)
+        if AVAILABLE_OPTIONAL_VARS:
+            display(optional_panel.head())
+        else:
+            print("현재 data 폴더에는 확장 분석용 추가 KOSIS 파일이 없습니다.")
+            print("권장 다운로드: 조혼인율/평균초혼연령, 지역별 사교육비, 주택 매매·전세가격지수, 경력단절여성인구, 청년순이동률")
+        """
+    ),
+    md(
+        """
         ## 04 데이터 품질 체크
 
         강의자료의 결측 처리 흐름을 따르되, 분석 전에 변수별 최신 연도와 결측률을 표로 확인합니다.
@@ -1091,6 +1360,160 @@ cells = [
     ),
     md(
         """
+        ## 08-1 추가 요인 확장 분석
+
+        이 섹션은 선택 사항입니다. `data/` 폴더에 추가 KOSIS 파일이 있을 때만 실행 가능한 분석을 수행합니다.
+        기본 결론은 기존 9개 요인+개인소득 complete-case 결과로 두고, 확장 분석은 결과 안정성 확인용으로 사용합니다.
+        """
+    ),
+    code(
+        """
+        extended_summary_text = "추가 KOSIS 파일이 없어 확장 PCA/PCR은 실행하지 않았습니다."
+        extended_comparison_df = pd.DataFrame()
+
+        if len(AVAILABLE_OPTIONAL_VARS) < 2:
+            print("확장 분석을 실행하려면 추가 변수 2개 이상이 필요합니다.")
+            print("현재 사용 가능한 추가 변수:", AVAILABLE_OPTIONAL_VARS)
+            display(
+                optional_factor_candidates[["추가요인", "대표지표", "KOSIS검색어", "주의점"]]
+            )
+        else:
+            extended_panel = pd.merge(panel, optional_panel, on=["지역", "연도"], how="left")
+            EXTENDED_FACTOR_VARS = FACTOR_VARS + AVAILABLE_OPTIONAL_VARS
+            EXTENDED_MODEL_VARS = ["출산율"] + EXTENDED_FACTOR_VARS
+
+            extended_coverage_rows = []
+            for var in EXTENDED_MODEL_VARS:
+                temp = extended_panel[["지역", "연도", var]].copy()
+                non_null = temp.dropna(subset=[var])
+                extended_coverage_rows.append(
+                    {
+                        "변수": var,
+                        "관측치수": int(non_null.shape[0]),
+                        "지역수": int(non_null["지역"].nunique()) if not non_null.empty else 0,
+                        "최소연도": int(non_null["연도"].min()) if not non_null.empty else np.nan,
+                        "최신연도": int(non_null["연도"].max()) if not non_null.empty else np.nan,
+                        "결측률": round(temp[var].isna().mean(), 3),
+                        "구분": "추가요인" if var in AVAILABLE_OPTIONAL_VARS else "기존요인",
+                    }
+                )
+
+            extended_coverage_df = pd.DataFrame(extended_coverage_rows)
+            display(extended_coverage_df.sort_values(["구분", "변수"]))
+
+            extended_complete_counts = (
+                extended_panel.groupby("연도")[EXTENDED_MODEL_VARS]
+                .apply(lambda df: df.dropna().shape[0])
+                .rename("extended_complete_case_지역수")
+                .reset_index()
+            )
+            display(extended_complete_counts.tail(12))
+
+            extended_min_obs = max(6, min(12, len(EXTENDED_FACTOR_VARS) + 2))
+            extended_candidate_years = extended_complete_counts[
+                extended_complete_counts["extended_complete_case_지역수"] >= extended_min_obs
+            ]
+
+            if extended_candidate_years.empty:
+                print("확장 complete-case PCA/PCR을 수행할 공통연도가 부족합니다.")
+                print("기준 표본 수:", extended_min_obs)
+                print("최대 공통 지역 수:", int(extended_complete_counts["extended_complete_case_지역수"].max()))
+                print("따라서 추가 변수는 최신 현황 그래프와 개별 산점도 위주로 해석합니다.")
+            else:
+                EXTENDED_ANALYSIS_YEAR = int(extended_candidate_years["연도"].max())
+                print("확장 complete-case 분석 연도:", EXTENDED_ANALYSIS_YEAR)
+                print("확장 complete-case 표본 수:", int(
+                    extended_complete_counts.loc[
+                        extended_complete_counts["연도"] == EXTENDED_ANALYSIS_YEAR,
+                        "extended_complete_case_지역수",
+                    ].iloc[0]
+                ))
+
+                extended_complete_result = run_pca_pcr(
+                    extended_panel,
+                    EXTENDED_FACTOR_VARS,
+                    EXTENDED_ANALYSIS_YEAR,
+                    "extended-complete-case",
+                )
+
+                extended_imputed_panel, extended_imputation_summary = make_imputed_panel(
+                    extended_panel,
+                    EXTENDED_MODEL_VARS,
+                )
+                display(extended_imputation_summary)
+
+                extended_original_year_quality = (
+                    extended_panel.groupby("연도")[EXTENDED_MODEL_VARS]
+                    .apply(lambda df: (df.notna().sum() >= 12).mean())
+                    .rename("원자료_확장변수커버리지")
+                    .reset_index()
+                )
+                display(extended_original_year_quality.tail(12))
+
+                extended_imputed_year_candidates = extended_original_year_quality[
+                    extended_original_year_quality["원자료_확장변수커버리지"] >= 0.75
+                ]
+                if extended_imputed_year_candidates.empty:
+                    EXTENDED_IMPUTED_ANALYSIS_YEAR = EXTENDED_ANALYSIS_YEAR
+                else:
+                    EXTENDED_IMPUTED_ANALYSIS_YEAR = int(extended_imputed_year_candidates["연도"].max())
+
+                extended_imputed_result = run_pca_pcr(
+                    extended_imputed_panel,
+                    EXTENDED_FACTOR_VARS,
+                    EXTENDED_IMPUTED_ANALYSIS_YEAR,
+                    "extended-imputed",
+                )
+
+                base_rank = complete_result["cosine"][["변수", "rank", "cosine_similarity"]].rename(
+                    columns={
+                        "rank": "base_rank",
+                        "cosine_similarity": "base_cosine",
+                    }
+                )
+                extended_rank = extended_complete_result["cosine"][["변수", "rank", "cosine_similarity"]].rename(
+                    columns={
+                        "rank": "extended_rank",
+                        "cosine_similarity": "extended_cosine",
+                    }
+                )
+                extended_imputed_rank = extended_imputed_result["cosine"][["변수", "rank", "cosine_similarity"]].rename(
+                    columns={
+                        "rank": "extended_imputed_rank",
+                        "cosine_similarity": "extended_imputed_cosine",
+                    }
+                )
+
+                extended_comparison_df = (
+                    extended_rank
+                    .merge(extended_imputed_rank, on="변수", how="outer")
+                    .merge(base_rank, on="변수", how="left")
+                )
+                extended_comparison_df["extended_rank_change_after_imputation"] = (
+                    extended_comparison_df["extended_imputed_rank"] - extended_comparison_df["extended_rank"]
+                )
+                extended_comparison_df["rank_change_from_base"] = (
+                    extended_comparison_df["extended_rank"] - extended_comparison_df["base_rank"]
+                )
+                extended_comparison_df["추가요인여부"] = extended_comparison_df["변수"].isin(AVAILABLE_OPTIONAL_VARS)
+                extended_comparison_df = extended_comparison_df.sort_values("extended_rank").reset_index(drop=True)
+
+                display(extended_comparison_df)
+
+                top_extended = extended_comparison_df.sort_values("extended_rank").head(5)["변수"].tolist()
+                top_extended_imputed = extended_comparison_df.sort_values("extended_imputed_rank").head(5)["변수"].tolist()
+                extended_summary_text = (
+                    f"확장 complete-case는 {EXTENDED_ANALYSIS_YEAR}년, "
+                    f"확장 보간 분석은 {EXTENDED_IMPUTED_ANALYSIS_YEAR}년 기준으로 실행했습니다. "
+                    f"확장 complete-case 상위 요인은 {', '.join(top_extended)}이고, "
+                    f"보간 확장 상위 요인은 {', '.join(top_extended_imputed)}입니다. "
+                    "추가요인은 메인 결론이 아니라 민감도 확인용으로 해석합니다."
+                )
+                print(extended_summary_text)
+        """
+    ),
+    md(
+        """
         ## 09 인구증감률/자연증가율 보조 분석 자료 확인
 
         현재 과제 안내에는 인구 증감률이 언급되어 있으나, 현재 `data/` 폴더의 파일만 보면 사망자수·자연증가율·인구증가율 자료가 별도로 포함되어 있지 않습니다.
@@ -1136,6 +1559,9 @@ cells = [
         [보간 비교]
         보간 적용 후 상위 요인은 {", ".join(top_imputed)} 순으로 나타났다.
         순위가 크게 유지되면 결과가 비교적 안정적이라고 볼 수 있고, 순위가 바뀌면 결측 처리 방식에 민감하므로 해석에 주의해야 한다.
+
+        [추가 요인 확장 분석]
+        {extended_summary_text}
 
         [주의점]
         이 분석은 시도 단위의 관측치가 많지 않으므로 인과관계가 아니라 상관관계와 탐색적 영향도 비교로 해석해야 한다.
