@@ -1,0 +1,8 @@
+﻿자료명,통계표ID,통계표명,출처,수록기간,자료갱신일,통계표URL
+혼인/자연증가,DT_1B8000H,"시도/인구동태건수 및 동태율(출생,사망,혼인,이혼)","국가데이터처,「인구동향조사」",2015~2025,2026-03-19,https://kosis.kr/statHtml/statHtml.do?orgId=101&tblId=DT_1B8000H
+평균초혼연령,DT_1B83A05,시도별 평균초혼연령,"국가데이터처,「인구동향조사」",2015~2025,2026-03-19,https://kosis.kr/statHtml/statHtml.do?orgId=101&tblId=DT_1B83A05
+사교육비,DT_1PE105,학교급 및 시도별  학생 1인당 월평균 사교육비,"국가데이터처, 교육부,「초중고사교육비조사」",2015~2025,2026-03-12,https://kosis.kr/statHtml/statHtml.do?orgId=101&tblId=DT_1PE105
+경력단절여성,INH_1ES4H09S,경력단절여성인구(시도),"국가데이터처,「지역별고용조사」",2015~2024,2024-11-19,https://kosis.kr/statHtml/statHtml.do?orgId=101&tblId=INH_1ES4H09S
+주택매매가격지수,DT_1YL13502E,주택매매가격지수(시도/시/군/구),"한국부동산원,「전국주택가격동향조사」",202101~202512,2026-03-03,https://kosis.kr/statHtml/statHtml.do?orgId=101&tblId=DT_1YL13502E
+주택전세가격지수,DT_1YL13602E,주택전세가격지수(시도/시/군/구),"한국부동산원,「전국주택가격동향조사」",202101~202512,2026-03-03,https://kosis.kr/statHtml/statHtml.do?orgId=101&tblId=DT_1YL13602E
+청년순이동률,eRegion:822/std:554,청년순이동률,KOSIS e-지방지표,2015~2025,,https://kosis.kr/visual/eRegionIndex/eRegionWhole.do
