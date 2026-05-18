@@ -79,7 +79,9 @@ cells = [
 
         import numpy as np
         import pandas as pd
+        import matplotlib as mpl
         import matplotlib.pyplot as plt
+        import matplotlib.font_manager as fm
         import seaborn as sns
 
         from sklearn.decomposition import PCA
@@ -89,18 +91,60 @@ cells = [
 
         warnings.filterwarnings("ignore", category=UserWarning)
 
-        # 한글 폰트 설정: 강의자료 방식 유지
         import platform
 
-        if platform.system() == "Darwin":
-            plt.rc("font", family="AppleGothic")
-        elif platform.system() == "Windows":
-            plt.rc("font", family="Malgun Gothic")
-        else:
-            plt.rc("font", family="DejaVu Sans")
+        def configure_korean_font():
+            candidates = [
+                "AppleGothic",
+                "Apple SD Gothic Neo",
+                "NanumGothic",
+                "Nanum Gothic",
+                "Noto Sans CJK KR",
+                "Noto Sans KR",
+                "Malgun Gothic",
+                "Arial Unicode MS",
+            ]
+
+            def find_available_font():
+                available = {font.name for font in fm.fontManager.ttflist}
+                for font_name in candidates:
+                    if font_name in available:
+                        return font_name
+                return None
+
+            selected = find_available_font()
+            if selected is None and platform.system() == "Linux":
+                try:
+                    subprocess.run(
+                        ["apt-get", "update", "-qq"],
+                        check=True,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
+                    subprocess.run(
+                        ["apt-get", "install", "-y", "-qq", "fonts-nanum"],
+                        check=True,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
+                    fm.fontManager = fm._load_fontmanager(try_read_cache=False)
+                    selected = find_available_font()
+                except Exception as exc:
+                    print("한글 폰트 자동 설치를 건너뜁니다:", exc)
+
+            if selected:
+                mpl.rcParams["font.family"] = selected
+                plt.rcParams["font.family"] = selected
+                sns.set_theme(style="whitegrid", font=selected)
+                print("한글 폰트 설정:", selected)
+            else:
+                sns.set_theme(style="whitegrid")
+                print("한글 폰트를 찾지 못했습니다. Colab에서는 fonts-nanum 설치 후 런타임을 다시 실행하세요.")
+
+
+        configure_korean_font()
 
         plt.rcParams["axes.unicode_minus"] = False
-        sns.set_style("whitegrid")
         """
     ),
     code(
